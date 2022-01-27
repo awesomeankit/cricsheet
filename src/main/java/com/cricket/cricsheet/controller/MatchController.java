@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cricket.cricsheet.common.CricContants;
 import com.cricket.cricsheet.exception.MatchException;
 import com.cricket.cricsheet.model.ErrorModel;
 import com.cricket.cricsheet.model.Match;
@@ -68,7 +69,7 @@ public class MatchController {
 			allMatchList = matchService.getAllMatches();
 
 			if (allMatchList != null && allMatchList.size() > 0)
-				return ResponseEntity.ok().header("Match-count", String.format("%d", allMatchList.size()))
+				return ResponseEntity.ok().header(CricContants.HEADER_MATCH_COUNT, String.format("%d", allMatchList.size()))
 						.body(allMatchList);
 			else {
 				MatchException exp = new MatchException();
@@ -94,55 +95,15 @@ public class MatchController {
 			@RequestParam(name = "batting", required = false) String batting) {
 		List<Match> matches;
 		try {
-			matches = matchService.findMatchesByTeam(team, opponent);
+			matches = matchService.findMatchesByTeam(team, opponent, batting);
+			HttpHeaders responseHeaders = new HttpHeaders();
+			responseHeaders.set(CricContants.HEADER_MATCH_COUNT, String.format("%d", matches.size()));
+			return new ResponseEntity<>(matches, responseHeaders, HttpStatus.OK);
 
-			if (matches == null || matches.size() == 0 || team.equalsIgnoreCase(opponent)) {
-				MatchException exp = new MatchException();
-				exp.setErrorCode("100");
-				exp.setErrorMessage("Match information not found for team=" + team + ", opponent=" + opponent);
-				exp.setStatusCode(HttpStatus.NOT_FOUND);
-				throw exp;
-			} else if (matches.size() > 0) {
-
-				if ("first".equals(batting)) {
-					matches = matches.stream()
-							.filter(m -> (m.getInfo().getToss().getDecision().equals("bat")
-									&& team.equals(m.getInfo().getToss().getWinner()))
-									|| m.getInfo().getToss().getDecision().equals("field")
-											&& !team.equals(m.getInfo().getToss().getWinner()))
-							.collect(Collectors.toList());
-
-				} else if ("second".equals(batting)) {
-					matches = matches.stream()
-							.filter(m -> (m.getInfo().getToss().getDecision().equals("field")
-									&& team.equals(m.getInfo().getToss().getWinner()))
-									|| m.getInfo().getToss().getDecision().equals("bat")
-											&& !team.equals(m.getInfo().getToss().getWinner()))
-							.collect(Collectors.toList());
-				}
-
-				if (matches == null || matches.size() == 0) {
-					MatchException exp = new MatchException();
-					exp.setErrorCode("100");
-					exp.setErrorMessage("Match information not found for team=" + team + ", opponent=" + opponent +", batting="+batting);
-					exp.setStatusCode(HttpStatus.NOT_FOUND);
-					throw exp;
-				}
-
-				HttpHeaders responseHeaders = new HttpHeaders();
-				responseHeaders.set("Match-count", String.format("%d", matches.size()));
-				return new ResponseEntity<>(matches, responseHeaders, HttpStatus.OK);
-			} else {
-				MatchException exp = new MatchException();
-				exp.setErrorCode("101");
-				exp.setErrorMessage("Internal Server Error");
-				exp.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
-				throw exp;
-			}
 		} catch (MatchException mexp) {
 			throw mexp;
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Exception:",e);
 			MatchException exp = new MatchException();
 			exp.setErrorCode("101");
 			exp.setErrorMessage("Internal Server Error");
@@ -158,58 +119,8 @@ public class MatchController {
 			@RequestParam(name = "batting", required = false) String batting) {
 		List<Match> matches = null;
 		try {
-			matches = matchService.findMatchesByTeam(team, opponent);
-
-			if (matches == null || matches.size() == 0 || team.equalsIgnoreCase(opponent)) {
-				MatchException exp = new MatchException();
-				exp.setErrorCode("100");
-				exp.setErrorMessage("Record information not found");
-				exp.setStatusCode(HttpStatus.NOT_FOUND);
-				throw exp;
-			}
-
-			if ("first".equals(batting)) {
-				matches = matches.stream()
-						.filter(m -> (m.getInfo().getToss().getDecision().equals("bat")
-								&& team.equals(m.getInfo().getToss().getWinner()))
-								|| m.getInfo().getToss().getDecision().equals("field")
-										&& !team.equals(m.getInfo().getToss().getWinner()))
-						.collect(Collectors.toList());
-
-			} else if ("second".equals(batting)) {
-				matches = matches.stream()
-						.filter(m -> (m.getInfo().getToss().getDecision().equals("field")
-								&& team.equals(m.getInfo().getToss().getWinner()))
-								|| m.getInfo().getToss().getDecision().equals("bat")
-										&& !team.equals(m.getInfo().getToss().getWinner()))
-						.collect(Collectors.toList());
-			}
-			if (matches == null || matches.size() == 0) {
-				logger.info("No matches found");
-				MatchException exp = new MatchException();
-				exp.setErrorCode("100");
-				exp.setErrorMessage("Record information not found");
-				exp.setStatusCode(HttpStatus.NOT_FOUND);
-				throw exp;
-			}
-
-			Record winLossRecord = matches.stream()
-					.filter(m -> !"no result".equalsIgnoreCase(m.getInfo().getOutcome().getResult()))
-					.reduce(new Record(team), // this object will accumulate the wins and losses.
-							(r, m) -> { // this BiFunction takes the accumulator and the current Match in the pipe
-								if (team.equalsIgnoreCase(m.getInfo().getOutcome().getWinner())) {
-									r.setWins(r.getWins() + 1);
-								} else if ("tie".equalsIgnoreCase(m.getInfo().getOutcome().getResult())) {
-									r.setTies(r.getTies() + 1);
-								} else {
-									r.setLosses(r.getLosses() + 1);
-								}
-								return r;
-							}, (a, b) -> { // This is a combiner used if Parallel streams are used
-								return new Record(a.getTeam(), a.getWins() + b.getWins(), a.getLosses() + b.getLosses(),
-										a.getTies() + b.getTies());
-							});
-
+			matches = matchService.findMatchesByTeam(team, opponent, batting);
+			Record winLossRecord = matchService.getWinLossRecord(matches, team);
 			return winLossRecord;
 		} catch (MatchException mexp) {
 			throw mexp;
