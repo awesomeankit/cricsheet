@@ -45,14 +45,16 @@ public class SpringConfig implements CachingConfigurer {
 	@Bean
 	@Override
 	public CacheManager cacheManager() {
-		SimpleCacheManager simpleCacheManager= new SimpleCacheManager();
-		GuavaCache  cache1= new GuavaCache(CricContants.CACHE_NAME_GET_MATCHES_BY_TEAM, CacheBuilder.newBuilder()
-				.maximumSize(cache_name_get_matches_by_team_size).expireAfterWrite(cache_name_get_matches_by_team_time, TimeUnit.MINUTES).build());
-		GuavaCache  cache2= new GuavaCache(CricContants.CACHE_NAME_GET_MATCHES_BY_TEAM_OPPONENT, CacheBuilder.newBuilder()
-				.maximumSize(cache_name_get_matches_by_team_opponent_size).expireAfterWrite(cache_name_get_matches_by_team_opponent_time, TimeUnit.MINUTES).build());
-		
+		SimpleCacheManager simpleCacheManager = new SimpleCacheManager();
+		GuavaCache cache1 = new GuavaCache(CricContants.CACHE_NAME_GET_MATCHES_BY_TEAM,
+				CacheBuilder.newBuilder().maximumSize(cache_name_get_matches_by_team_size)
+						.expireAfterWrite(cache_name_get_matches_by_team_time, TimeUnit.MINUTES).build());
+		GuavaCache cache2 = new GuavaCache(CricContants.CACHE_NAME_GET_MATCHES_BY_TEAM_OPPONENT,
+				CacheBuilder.newBuilder().maximumSize(cache_name_get_matches_by_team_opponent_size)
+						.expireAfterWrite(cache_name_get_matches_by_team_opponent_time, TimeUnit.MINUTES).build());
+
 		simpleCacheManager.setCaches(Arrays.asList(cache1, cache2));
-		
+
 		return simpleCacheManager;
 	}
 
