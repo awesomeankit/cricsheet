@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.cricket.cricsheet.filter.JwtRequestFilter;
+import com.cricket.cricsheet.model.Role;
 import com.cricket.cricsheet.service.MyUserDetailsService;
  
 @EnableWebSecurity
@@ -29,11 +30,11 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
 	}
 	
 	protected void configure(HttpSecurity http) throws Exception {
-		http.csrf().disable()
-			.authorizeRequests().antMatchers("/cricsheet/authenticate").permitAll()
-			.anyRequest().authenticated()
-			.and().sessionManagement()
-			.sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+		http.authorizeRequests().antMatchers("/cricsheet/authenticate").permitAll()
+				.antMatchers("/cricsheet/api/matches/teams/**").hasRole(Role.VIEW_DATA.toString())
+				.antMatchers("/cricsheet/api/matches/*/record**").hasRole(Role.VIEW_RECORD.toString())
+				.anyRequest().authenticated().and().sessionManagement()
+				.sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 		http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 	}
 	
